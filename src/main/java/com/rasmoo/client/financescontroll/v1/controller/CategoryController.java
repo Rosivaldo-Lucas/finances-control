@@ -7,6 +7,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.rasmoo.client.financescontroll.entity.Category;
+import com.rasmoo.client.financescontroll.entity.User;
 import com.rasmoo.client.financescontroll.repository.ICategoryRepository;
+import com.rasmoo.client.financescontroll.repository.IUserRepository;
 import com.rasmoo.client.financescontroll.v1.dto.CategoryDTO;
 import com.rasmoo.client.financescontroll.v1.vo.Response;
 
@@ -25,25 +29,50 @@ import com.rasmoo.client.financescontroll.v1.vo.Response;
 @RequestMapping("/v1/categoria")
 public class CategoryController {
 
-	@Autowired
-	private ICategoryRepository categoryRepository;
+	private final ICategoryRepository categoryRepository;
+
+	private final IUserRepository userRepository;
 	
-	private ModelMapper mapper = new ModelMapper();
+	private final ModelMapper mapper;
+
+	@Autowired
+	public CategoryController(final ICategoryRepository categoryRepository, final IUserRepository userRepository) {
+		this.categoryRepository = categoryRepository;
+		this.userRepository = userRepository;
+		this.mapper = new ModelMapper();
+	}
 
 	@PostMapping
 	public ResponseEntity<Response<Category>> cadastrarCategoria(@RequestBody CategoryDTO categoria) {
-		Response<Category> response = new Response<>();
+		final Response<Category> response = new Response<>();
+		
 		try {
+
+			final Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+			final Optional<User> usuario = this.userRepository.findByEmail(auth.getName());
+
+			if (usuario.isEmpty()) {
+				throw new RuntimeException("Usuário não encontrado.");
+			}
+
 			if (categoria != null && categoria.getId() == null) {
-				Category categoriaEntity = this.categoryRepository.save(mapper.map(categoria, Category.class));
-				response.setData(categoriaEntity);
+				final Category categoriaEntity = mapper.map(categoria, Category.class);
+				categoriaEntity.setUser(usuario.get());
+
+				final Category categoriaSalva = this.categoryRepository.save(categoriaEntity);
+
+				response.setData(categoriaSalva);
 				response.setStatusCode(HttpStatus.CREATED.value());
+				
 				return ResponseEntity.status(HttpStatus.CREATED).body(response);
 			}
+
 			throw new Exception();
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
