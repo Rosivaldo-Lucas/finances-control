@@ -47,18 +47,11 @@ public class CategoryController {
 		final Response<Category> response = new Response<>();
 		
 		try {
-
-			final Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-			final Optional<User> usuario = this.userRepository.findByEmail(auth.getName());
-
-			if (usuario.isEmpty()) {
-				throw new RuntimeException("Usuário não encontrado.");
-			}
+			final User usuario = this.findAuthUser();
 
 			if (categoria != null && categoria.getId() == null) {
 				final Category categoriaEntity = mapper.map(categoria, Category.class);
-				categoriaEntity.setUser(usuario.get());
+				categoriaEntity.setUser(usuario);
 
 				final Category categoriaSalva = this.categoryRepository.save(categoriaEntity);
 
@@ -79,21 +72,31 @@ public class CategoryController {
 	}
 
 	@PutMapping
-	public ResponseEntity<Response<Category>> atualizarCategoria(@RequestBody CategoryDTO categoria) {
-		Response<Category> response = new Response<>();
+	public ResponseEntity<Response<Category>> atualizarCategoria(@RequestBody final CategoryDTO categoria) {
+		final Response<Category> response = new Response<>();
+		
 		try {
 			if (categoria != null && categoria.getId() != null) {
-				Optional<Category> catogory = this.categoryRepository.findById(categoria.getId());
-				if (catogory.isPresent()) {
-					response.setData(this.categoryRepository.save(mapper.map(categoria, Category.class)));
+				final User usuario = this.findAuthUser();
+				
+				final Optional<Category> category = this.categoryRepository.findById(categoria.getId());
+				
+				if (category.isPresent() && category.get().getUser().getId() == usuario.getId()) {
+					final Category categoryEntity = this.mapper.map(categoria, Category.class);
+					categoryEntity.setUser(usuario);
+
+					response.setData(this.categoryRepository.save(categoryEntity));
 					response.setStatusCode(HttpStatus.OK.value());
+					
 					return ResponseEntity.status(HttpStatus.OK).body(response);
 				}
 			}
+
 			throw new Exception();
 		} catch (Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
@@ -101,14 +104,19 @@ public class CategoryController {
 
 	@GetMapping
 	public ResponseEntity<Response<List<Category>>> listarCategorias() {
-		Response<List<Category>> response = new Response<>();
+		final Response<List<Category>> response = new Response<>();
+		
 		try {
-			response.setData(this.categoryRepository.findAll());
+			final User usuario = this.findAuthUser();
+
+			response.setData(this.categoryRepository.findAllByUserId(usuario.getId()));
 			response.setStatusCode(HttpStatus.OK.value());
+			
 			return ResponseEntity.status(HttpStatus.OK).body(response);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
@@ -148,6 +156,18 @@ public class CategoryController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
+	}
+
+	private User findAuthUser() {
+		final Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+		final Optional<User> usuario = this.userRepository.findByEmail(auth.getName());
+
+		if (usuario.isEmpty()) {
+			throw new RuntimeException("Usuário não encontrado.");
+		}
+
+		return usuario.get();
 	}
 
 }
