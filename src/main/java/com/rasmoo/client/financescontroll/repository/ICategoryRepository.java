@@ -2,6 +2,7 @@ package com.rasmoo.client.financescontroll.repository;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,9 @@ import com.rasmoo.client.financescontroll.entity.Category;
 public interface ICategoryRepository  extends JpaRepository<Category, Serializable>{
 
     @Query("SELECT c FROM Category c WHERE c.user.id = :userId")
-    public List<Category> findAllByUserId(@Param("userId") Long userId);
+    public List<Category> findAllByUserId(@Param("userId") final Long userId);
+
+    @Query("SELECT c FROM Category c WHERE c.id = :categoryId AND c.user.id = :userId")
+    public Optional<Category> findByUserId(@Param("categoryId") final Long categoryId, @Param("userId") final Long userId);
 
 }

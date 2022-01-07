@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.rasmoo.client.financescontroll.entity.Category;
 import com.rasmoo.client.financescontroll.entity.Entry;
+import com.rasmoo.client.financescontroll.entity.User;
 import com.rasmoo.client.financescontroll.repository.ICategoryRepository;
 import com.rasmoo.client.financescontroll.repository.IEntryRepository;
+import com.rasmoo.client.financescontroll.v1.services.IUserInfoService;
+import com.rasmoo.client.financescontroll.v1.services.UserInfoService;
 import com.rasmoo.client.financescontroll.v1.vo.EntryVO;
 import com.rasmoo.client.financescontroll.v1.vo.Response;
 
@@ -26,60 +29,83 @@ import com.rasmoo.client.financescontroll.v1.vo.Response;
 @RequestMapping("/v1/lancamento")
 public class EntryController {
 
-	@Autowired
-	private IEntryRepository entryRepository;
+	private final IEntryRepository entryRepository;
+
+	private final ICategoryRepository categoryRepository;
+
+	private final IUserInfoService userInfoService;
 
 	@Autowired
-	private ICategoryRepository categoryRepository;
+	public EntryController(final IEntryRepository entryRepository,
+						   final ICategoryRepository categoryRepository,
+						   final IUserInfoService userInfoService) {
+
+		this.entryRepository = entryRepository;
+		this.categoryRepository = categoryRepository;
+		this.userInfoService = userInfoService;
+	}
 
 	@PostMapping
-	public ResponseEntity<Response<Entry>> cadastrarLancamento(@RequestBody EntryVO entryVO) {
-		Response<Entry> response = new Response<>();
+	public ResponseEntity<Response<Entry>> cadastrarLancamento(@RequestBody final EntryVO entryVO) {
+		final Response<Entry> response = new Response<>();
+		
 		try {
-			Optional<Category> category = this.categoryRepository.findById(entryVO.getCategoryId());
-			if (entryVO.getId() == null && category.isPresent()) {
+			final User usuario = this.userInfoService.findAuth();
 
-				Entry lancamento = new Entry();
+			final Optional<Category> category = this.categoryRepository.findById(entryVO.getCategoryId());
+			
+			if (entryVO.getId() == null && category.isPresent()) {
+				final Entry lancamento = new Entry();
 
 				lancamento.setCategoria(category.get());
 				lancamento.setTipo(entryVO.getTipo());
 				lancamento.setValor(entryVO.getValor());
+				lancamento.setUser(usuario);
 
 				response.setData(this.entryRepository.save(lancamento));
 				response.setStatusCode(HttpStatus.CREATED.value());
+				
 				return ResponseEntity.status(HttpStatus.CREATED).body(response);
 			}
+
 			throw new Exception();
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
 	}
 
 	@PutMapping
-	public ResponseEntity<Response<Entry>> atualizarLancamento(@RequestBody EntryVO entryVO) {
-		Response<Entry> response = new Response<>();
+	public ResponseEntity<Response<Entry>> atualizarLancamento(@RequestBody final EntryVO entryVO) {
+		final Response<Entry> response = new Response<>();
+		
 		try {
+			final User usuario = this.userInfoService.findAuth();
 
-			Optional<Category> category = this.categoryRepository.findById(entryVO.getCategoryId());
-			Optional<Entry> entry = this.entryRepository.findById(entryVO.getId());
+			final Optional<Category> category = this.categoryRepository.findByUserId(entryVO.getCategoryId(), usuario.getId());
+			final Optional<Entry> entry = this.entryRepository.findById(entryVO.getId());
+			
 			if (entry.isPresent() && category.isPresent()) {
+				final Entry lancamento = entry.get();
 				
-				Entry lancamento = entry.get();
 				lancamento.setCategoria(category.get());
 				lancamento.setTipo(entryVO.getTipo());
 				lancamento.setValor(entryVO.getValor());
 				
 				response.setData(this.entryRepository.save(lancamento));
 				response.setStatusCode(HttpStatus.OK.value());
+				
 				return ResponseEntity.status(HttpStatus.OK).body(response);
 			}
+
 			throw new Exception();
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
@@ -87,49 +113,64 @@ public class EntryController {
 
 	@GetMapping
 	public ResponseEntity<Response<List<Entry>>> listarLancamentos() {
-		Response<List<Entry>> response = new Response<>();
+		final Response<List<Entry>> response = new Response<>();
+		
 		try {
-			response.setData(this.entryRepository.findAll());
+			final User usuario = this.userInfoService.findAuth();
+
+			response.setData(this.entryRepository.findAllByUserId(usuario.getId()));
 			response.setStatusCode(HttpStatus.OK.value());
+			
 			return ResponseEntity.status(HttpStatus.OK).body(response);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Response<Entry>> consultarLancamento(@PathVariable("id") long id) {
-		Response<Entry> response = new Response<>();
+	public ResponseEntity<Response<Entry>> consultarLancamento(@PathVariable("id") final Long id) {
+		final Response<Entry> response = new Response<>();
+		
 		try {
-			Optional<Entry> entry = this.entryRepository.findById(id);
+			final Optional<Entry> entry = this.entryRepository.findById(id);
+			
 			if (entry.isPresent()) {
 				response.setData(entry.get());
 			}
+
 			response.setStatusCode(HttpStatus.OK.value());
+			
 			return ResponseEntity.status(HttpStatus.OK).body(response);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Response<Boolean>> excluirLancamento(@PathVariable("id") long id) {
-		Response<Boolean> response = new Response<>();
+	public ResponseEntity<Response<Boolean>> excluirLancamento(@PathVariable("id") final Long id) {
+		final Response<Boolean> response = new Response<>();
+		
 		try {
 			if (this.entryRepository.findById(id).isPresent()) {
 				this.entryRepository.deleteById(id);
+				
 				response.setData(Boolean.TRUE);
 			}
+
 			response.setStatusCode(HttpStatus.OK.value());
+			
 			return ResponseEntity.status(HttpStatus.OK).body(response);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 

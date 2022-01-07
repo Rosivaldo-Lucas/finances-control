@@ -26,7 +26,7 @@ import com.rasmoo.client.financescontroll.v1.dto.CategoryDTO;
 import com.rasmoo.client.financescontroll.v1.vo.Response;
 
 @RestController
-@RequestMapping("/v1/categoria")
+@RequestMapping({ "/v1/categorias", "/v2/categorias" })
 public class CategoryController {
 
 	private final ICategoryRepository categoryRepository;
@@ -81,7 +81,7 @@ public class CategoryController {
 				
 				final Optional<Category> category = this.categoryRepository.findById(categoria.getId());
 				
-				if (category.isPresent() && category.get().getUser().getId() == usuario.getId()) {
+				if (category.isPresent() && category.get().getUser().getId().equals(usuario.getId())) {
 					final Category categoryEntity = this.mapper.map(categoria, Category.class);
 					categoryEntity.setUser(usuario);
 
@@ -124,17 +124,22 @@ public class CategoryController {
 
 	@GetMapping("/{id}")
 	public ResponseEntity<Response<Category>> consultarCategoria(@PathVariable Long id) {
-		Response<Category> response = new Response<>();
+		final Response<Category> response = new Response<>();
+
 		try {
-			Optional<Category> catogory = this.categoryRepository.findById(id);
+			final Optional<Category> catogory = this.categoryRepository.findById(id);
+
 			if (catogory.isPresent()) {
 				response.setData(catogory.get());
 			}
+
 			response.setStatusCode(HttpStatus.OK.value());
+
 			return ResponseEntity.status(HttpStatus.OK).body(response);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
@@ -142,17 +147,21 @@ public class CategoryController {
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Response<Boolean>> excluirCategoria(@PathVariable Long id) {
-		Response<Boolean> response = new Response<>();
+		final Response<Boolean> response = new Response<>();
+
 		try {
 			if (this.categoryRepository.findById(id).isPresent()) {
 				this.categoryRepository.deleteById(id);
+
 				response.setData(Boolean.TRUE);
 			}
 			response.setStatusCode(HttpStatus.OK.value());
+
 			return ResponseEntity.status(HttpStatus.OK).body(response);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			response.setData(null);
 			response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 
