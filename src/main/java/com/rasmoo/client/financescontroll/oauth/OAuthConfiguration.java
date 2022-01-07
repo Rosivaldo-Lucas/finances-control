@@ -1,12 +1,16 @@
 package com.rasmoo.client.financescontroll.oauth;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.AuthorizationServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
+import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
 
 @Configuration
@@ -17,13 +21,30 @@ public class OAuthConfiguration {
   @EnableAuthorizationServer
   public static class AuthorizationServer extends AuthorizationServerConfigurerAdapter {
 
+    private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    public AuthorizationServer(final AuthenticationManager authenticationManager, final PasswordEncoder passwordEncoder) {
+      this.authenticationManager = authenticationManager;
+      this.passwordEncoder = passwordEncoder;
+    }
+
     @Override
     public void configure(final ClientDetailsServiceConfigurer clients) throws Exception {
       clients
               .inMemory()
               .withClient("cliente-web")
-              .secret("web")
+              .secret(this.passwordEncoder.encode("web"))
+              .authorizedGrantTypes("password")
+              .scopes("read", "write")
+              .accessTokenValiditySeconds(3601)
               .resourceIds(RESOURCE_ID);
+    }
+
+    @Override
+    public void configure(final AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
+      endpoints.authenticationManager(this.authenticationManager);
     }
 
   }
