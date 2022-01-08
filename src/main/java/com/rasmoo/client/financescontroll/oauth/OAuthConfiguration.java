@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.E
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
+import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
 
 @Configuration
@@ -39,6 +40,14 @@ public class OAuthConfiguration {
               .authorizedGrantTypes("password")
               .scopes("read", "write")
               .accessTokenValiditySeconds(3601)
+              .resourceIds(RESOURCE_ID)
+              .and()
+              .withClient("cliente-canva")
+              .secret(this.passwordEncoder.encode("canva"))
+              .authorizedGrantTypes("authorization_code")
+              .redirectUris("https://github.com/Rosivaldo-Lucas/finances-control")
+              .scopes("read")
+              .accessTokenValiditySeconds(3601)
               .resourceIds(RESOURCE_ID);
     }
 
@@ -47,6 +56,10 @@ public class OAuthConfiguration {
       endpoints.authenticationManager(this.authenticationManager);
     }
 
+    @Override
+    public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
+      super.configure(security);
+    }
   }
 
   @EnableResourceServer
