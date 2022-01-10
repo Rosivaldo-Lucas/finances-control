@@ -2,7 +2,10 @@ package com.rasmoo.client.financescontroll.oauth;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.GlobalMethodSecurityConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +17,7 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.R
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
+import org.springframework.security.oauth2.provider.expression.OAuth2MethodSecurityExpressionHandler;
 
 @Configuration
 public class OAuthConfiguration {
@@ -45,8 +49,9 @@ public class OAuthConfiguration {
                 .withClient("cliente-web")
                 .secret(this.passwordEncoder.encode("web"))
                 .authorizedGrantTypes("password", "refresh_token")
-                .scopes("read", "write")
-                .accessTokenValiditySeconds(17)
+                .scopes("read", "write", "logado", "nao_logado")
+                .accessTokenValiditySeconds(3600) // 1 hora
+                .refreshTokenValiditySeconds(86400) // 24 horas
                 .resourceIds(RESOURCE_ID)
               .and()
                 .withClient("cliente-canva")
@@ -62,7 +67,8 @@ public class OAuthConfiguration {
     public void configure(final AuthorizationServerEndpointsConfigurer endpoints) {
       endpoints
               .authenticationManager(this.authenticationManager)
-              .userDetailsService(this.userDetailsService);
+              .userDetailsService(this.userDetailsService)
+              .reuseRefreshTokens(Boolean.FALSE);
     }
 
     @Override
@@ -86,6 +92,16 @@ public class OAuthConfiguration {
               .authorizeRequests()
               .anyRequest()
               .authenticated();
+    }
+
+  }
+
+  @EnableGlobalMethodSecurity(prePostEnabled = true)
+  public static class OAuthExpressionHandler extends GlobalMethodSecurityConfiguration {
+
+    @Override
+    protected MethodSecurityExpressionHandler createExpressionHandler() {
+      return new OAuth2MethodSecurityExpressionHandler();
     }
 
   }

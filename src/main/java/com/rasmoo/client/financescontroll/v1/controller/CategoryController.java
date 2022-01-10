@@ -7,6 +7,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,7 +27,8 @@ import com.rasmoo.client.financescontroll.v1.dto.CategoryDTO;
 import com.rasmoo.client.financescontroll.v1.vo.Response;
 
 @RestController
-@RequestMapping({ "/v1/categorias", "/v2/categorias" })
+@RequestMapping("/v1/categorias")
+@PreAuthorize(value = "#oauth2.hasScope('logado') and hasRole('ROLE_CUSTOMER')")
 public class CategoryController {
 
 	private final ICategoryRepository categoryRepository;
@@ -103,6 +105,7 @@ public class CategoryController {
 	}
 
 	@GetMapping
+	@PreAuthorize(value = "#oauth2.hasScope('logado') and hasRole('ROLE_CUSTOMER')")
 	public ResponseEntity<Response<List<Category>>> listarCategorias() {
 		final Response<List<Category>> response = new Response<>();
 		
